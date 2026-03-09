@@ -1,0 +1,183 @@
+options {
+    STATIC = true;
+}
+
+PARSER_BEGIN(CLLang)
+package CLLang;
+
+public class CLLang {
+    public static SymbolTable symTb;
+    
+    public static void main(String argv[]) throws ParseException {
+        symTb = new SymbolTable();
+        CLLang parser = new CLLang(System.in);
+        parser.Start();
+        symTb.printSymbolTable();
+    }
+
+}
+
+PARSER_END(CLLang)
+
+SKIP: {
+  "\n"
+| "\r\n"
+| " "
+}
+
+TOKEN:{
+  <PROGSTART: "startProgram">
+| <ENDPROG: "endProgram">
+| <COLON: ":">
+| <VARIABLESTART: "variables">
+| <CODESTART: "code">
+| <LOOPSTART: "loopif">
+| <LOOPHOLDS: "holds">
+| <LOOPEND: "endloop">
+| <SWITCHFOR: "switchfor">
+| <SWITCHCASE: "case">
+| <SWITCHOTHER: "other">
+| <ENDSWITCHFOR: "endswitchfor">
+| <INT_TYPE: "int">
+| <FLOAT_TYPE: "float">
+| <STRING_TYPE: "string">
+| <PrintOut: "outString">
+| <DIGIT: (["0" - "9"]) >
+| <REAL: (["1" - "9"] (<DIGIT>)*) >
+| <STRING: "\"" (["a" - "z", "0" - "9" , "A" - "Z"])+ "\"">
+| <IDENTIFIER: ["a" - "z", "A" - "Z", "_"] ( ["a" - "z", "A" - "Z", "_", "0" - "9"] )* >
+| <SEMICOLON: ";">
+| <ASSIGNMENT: "=">
+| <ISEQUALS: "==">
+| <GREATERTHAN: ">">
+| <SMALLERTHAN: "<">
+| <GREATEROREQUAL: ">=">
+| <SMALLEROREQUAL: "<=">
+| <COMMA: ",">
+| <OpenParenthesis: "(">
+| <CloseParenthesis: ")">
+| <PLUS: "+">
+| <MINUS: "-">
+| <ASTERISK: "*">
+| <DIVIDE: "/">
+}
+
+
+void Start() #Start : {}{
+
+  ProgramBlockStart()
+   VariableBlock()
+   CodeBlock()
+  ProgramBlockEnd()
+}
+
+void ProgramBlockStart() #ProgramBlockStart : {}{
+ <PROGSTART> 
+}
+
+void ProgramBlockEnd() #ProgramBlockEnd : {}{
+ <ENDPROG> 
+}
+
+void VariableBlock() #VariableBlock : {}{
+ VariableBlockStart()
+ VariableDeclaration()
+}
+
+void VariableBlockStart() #VariableBlockStart : {}{
+ <VARIABLESTART> <COLON>
+}
+
+Token VariableDataTypes() #VariableBlockStart :
+{
+  Token t;
+}
+{
+  t=<INT_TYPE> {return t;} 
+| t=<FLOAT_TYPE> {return t;}
+| t=<STRING_TYPE> {return t;}
+ 
+}
+
+void VariableDeclaration() #VariableDeclaration:
+{
+Token dataType, identifier;
+}
+
+{
+    (dataType=VariableDataTypes() identifier=<IDENTIFIER> 
+        {
+            symTb.put(identifier.image, dataType.image);
+        }
+    
+    ( <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT>) )? 
+
+    (<COMMA> identifier=<IDENTIFIER>
+        {
+            symTb.put(identifier.image, symTb.lastValue());
+        }
+
+    ( <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT>) )? )*  <SEMICOLON>)+
+
+}
+
+void CodeBlock() #CodeBlock : {}{
+ CodeBlockStart()
+ CodeBlockBody()
+}
+
+void CodeBlockStart() #CodeBlockStart : {}{
+ <CODESTART> <COLON>
+}
+
+void OutStmt() #OutStmt : {}{
+  <PrintOut> <OpenParenthesis> (<IDENTIFIER> | <STRING> | <REAL> ) <CloseParenthesis> <SEMICOLON>
+}
+
+void AirhtemicOperators() #AirhtemicOperators : {}{
+  <PLUS>
+| <MINUS>
+| <ASTERISK>
+| <DIVIDE>
+}
+
+void ArithemicExpression() #ArithemicExpression : {}{
+ (<IDENTIFIER> | <DIGIT> | <REAL> )
+    AirhtemicOperators()
+ (<IDENTIFIER> | <DIGIT> | <REAL> )
+}
+
+void AssignmentStmt() #AssignmentStmt : {}{
+    <IDENTIFIER> <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT> | ArithemicExpression()) <SEMICOLON>
+}
+
+void ConditionalStmt() #ConditionalStmt : {} {
+  <IDENTIFIER> (<GREATERTHAN> | <SMALLERTHAN> | <GREATEROREQUAL> | <SMALLEROREQUAL>) (<REAL> | <STRING>)
+}
+
+void LoopStmt() #LoopStmt : {}{
+  <LOOPSTART> ConditionalStmt() <LOOPHOLDS>
+  (AssignmentStmt())*
+  <LOOPEND>
+}
+
+void SwitchCaseBody() #SwitchCaseBody : {}{
+  ((<SWITCHCASE> | <SWITCHOTHER>) (<REAL> | <DIGIT> | <STRING>) <COLON> ( AssignmentStmt() )+ )+
+}
+
+void SwitchCaseStmt() #SwitchCaseStmt : {}{
+  <SWITCHFOR> ( <IDENTIFIER> | <REAL> | <DIGIT>) 
+  SwitchCaseBody()
+  <ENDSWITCHFOR>
+}
+
+void Stmts() #Stmts : {}{
+  AssignmentStmt()
+| OutStmt()
+| LoopStmt()
+| SwitchCaseStmt()
+}
+
+void CodeBlockBody() #CodeBlockBody : {}{
+  ( Stmts() )*
+}

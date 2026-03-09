@@ -1,0 +1,21 @@
+startProgram
+  variables:
+    int i,y=10;
+    string yy="HELLO";
+    int j=5;
+  code:
+    outString(i);
+    i = 10;
+    outString(yy);
+    loopif y < 10 holds
+        i = i - 9;
+    endloop
+    switchfor j
+    case 3:
+        i=10;
+        j= 2;
+    case 5:
+        j=200;
+        i=0;
+    endswitchfor
+endProgram
