@@ -162,8 +162,6 @@ String declaredType;
 {
     t=<IDENTIFIER> { identifierName=t.image; } <ASSIGNMENT> (t=<REAL> | t=<STRING> | t=<DIGIT> | t=<DECIMAL> | ArithemicExpression()) <SEMICOLON>
     {
-        System.out.println("Identifier: " + identifierName);
-        System.out.println("Token: "+ t.image);
         tokenType = sa.infereType(t.image);
         declaredType = symTb.get(identifierName);
         System.out.println("Declared Type: " + declaredType + ", actual Type: " + tokenType);
