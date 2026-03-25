@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+#vim filetype: bash
+
+TARGET_ALL_LNO=0
+
+
+usage(){
+    echo "$0 <command>"
+    echo " enable/disable make builds"
+    echo "commands:"
+    echo "enable    enable make builds"
+    echo "disable   disable make builds. use for development"
+    echo "dev       synonym to disable"
+    exit 1
+}
+
+
+enable_disable(){
+    declare -a make_script
+    local lno=1
+    local action="$1"
+    while IFS= read -r line; do
+        if [[ "$action" == "enable" ]]; then
+            local out=$(echo $line | grep -P "all:\s*eof")
+            if [[ -n $out ]]; then
+                echo "all: build" >> "Makefile2"
+            else
+                echo "$line" >> "Makefile2"
+            fi
+        elif [[ "$action" == "disable" ]]; then 
+            local out=$(echo $line | grep -P "all:\s*build")
+            if [[ -n $out ]]; then
+                echo "all: eof" >> "Makefile2"
+            else
+                echo "$line" >> "Makefile2"
+            fi
+        fi
+        
+        lno=$(($lno + 1))
+    done < "Makefile"
+    
+    mv Makefile2 Makefile
+}
+
+enable(){
+    enable_disable "enable"
+}
+
+disable(){
+    enable_disable "disable"
+}
+
+if [[ "$1" == "enable" ]]; then
+    enable
+elif [[ "$1" == "disable" || "$1" == "dev" ]]; then
+    disable
+else
+    usage
+fi

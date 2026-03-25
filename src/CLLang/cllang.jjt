@@ -7,9 +7,12 @@ package CLLang;
 
 public class CLLang {
     public static SymbolTable symTb;
-    
+    public static SemanticAnalysis sa;
+
     public static void main(String argv[]) throws ParseException {
         symTb = new SymbolTable();
+        sa = new SemanticAnalysis();
+
         CLLang parser = new CLLang(System.in);
         parser.Start();
         symTb.printSymbolTable();
@@ -23,12 +26,14 @@ SKIP: {
   "\n"
 | "\r\n"
 | " "
+| "//"
 }
 
 TOKEN:{
   <PROGSTART: "startProgram">
 | <ENDPROG: "endProgram">
 | <COLON: ":">
+| <DOT: ".">
 | <VARIABLESTART: "variables">
 | <CODESTART: "code">
 | <LOOPSTART: "loopif">
@@ -43,6 +48,7 @@ TOKEN:{
 | <STRING_TYPE: "string">
 | <PrintOut: "outString">
 | <DIGIT: (["0" - "9"]) >
+| <DECIMAL: ["0" - "9"] <DOT> (["0" - "9"])+>
 | <REAL: (["1" - "9"] (<DIGIT>)*) >
 | <STRING: "\"" (["a" - "z", "0" - "9" , "A" - "Z"])+ "\"">
 | <IDENTIFIER: ["a" - "z", "A" - "Z", "_"] ( ["a" - "z", "A" - "Z", "_", "0" - "9"] )* >
@@ -110,14 +116,14 @@ Token dataType, identifier;
             symTb.put(identifier.image, dataType.image);
         }
     
-    ( <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT>) )? 
+    ( <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT> | <DECIMAL>) )? 
 
     (<COMMA> identifier=<IDENTIFIER>
         {
             symTb.put(identifier.image, symTb.lastValue());
         }
 
-    ( <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT>) )? )*  <SEMICOLON>)+
+    ( <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT> | <DECIMAL>) )? )*  <SEMICOLON>)+
 
 }
 
@@ -131,7 +137,7 @@ void CodeBlockStart() #CodeBlockStart : {}{
 }
 
 void OutStmt() #OutStmt : {}{
-  <PrintOut> <OpenParenthesis> (<IDENTIFIER> | <STRING> | <REAL> ) <CloseParenthesis> <SEMICOLON>
+  <PrintOut> <OpenParenthesis> (<IDENTIFIER> | <STRING> | <REAL> | <DECIMAL> ) <CloseParenthesis> <SEMICOLON>
 }
 
 void AirhtemicOperators() #AirhtemicOperators : {}{
@@ -142,13 +148,29 @@ void AirhtemicOperators() #AirhtemicOperators : {}{
 }
 
 void ArithemicExpression() #ArithemicExpression : {}{
- (<IDENTIFIER> | <DIGIT> | <REAL> )
+ (<IDENTIFIER> | <DIGIT> | <REAL> | <DECIMAL> )
     AirhtemicOperators()
- (<IDENTIFIER> | <DIGIT> | <REAL> )
+ (<IDENTIFIER> | <DIGIT> | <REAL> | <DECIMAL> )
 }
 
-void AssignmentStmt() #AssignmentStmt : {}{
-    <IDENTIFIER> <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT> | ArithemicExpression()) <SEMICOLON>
+void AssignmentStmt() #AssignmentStmt :
+{
+Token t;
+String identifierName, tokenType;
+String declaredType;
+}
+{
+    t=<IDENTIFIER> { identifierName=t.image; } <ASSIGNMENT> (t=<REAL> | t=<STRING> | t=<DIGIT> | t=<DECIMAL> | ArithemicExpression()) <SEMICOLON>
+    {
+        System.out.println("Identifier: " + identifierName);
+        System.out.println("Token: "+ t.image);
+        tokenType = sa.infereType(t.image);
+        declaredType = symTb.get(identifierName);
+        System.out.println("Declared Type: " + declaredType + ", actual Type: " + tokenType);
+        if(tokenType != declaredType) {
+            throw new AssertionError("Type mismatch at lno:" + t.beginLine + ",col:" + t.beginColumn + ". Expected value of type '" + declaredType + "' but got of type ' " + tokenType + "'. ");
+        }
+    }
 }
 
 void ConditionalStmt() #ConditionalStmt : {} {

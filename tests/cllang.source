@@ -1,14 +1,15 @@
 startProgram
   variables:
     int i,y=10;
-    string yy="HELLO";
-    int j=5;
+    string yy;
+    int j;
   code:
     outString(i);
+    yy="HELLO";
+    j=5.33;
     i = 10;
     outString(yy);
     loopif y < 10 holds
-        i = i - 9;
     endloop
     switchfor j
     case 3:
