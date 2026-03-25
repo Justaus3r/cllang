@@ -48,7 +48,7 @@ TOKEN:{
 | <STRING_TYPE: "string">
 | <PrintOut: "outString">
 | <DIGIT: (["0" - "9"]) >
-| <DECIMAL: ["0" - "9"] <DOT> (["0" - "9"])+>
+| <DECIMAL: (["0" - "9"])+ <DOT> (["0" - "9"])+>
 | <REAL: (["1" - "9"] (<DIGIT>)*) >
 | <STRING: "\"" (["a" - "z", "0" - "9" , "A" - "Z"])+ "\"">
 | <IDENTIFIER: ["a" - "z", "A" - "Z", "_"] ( ["a" - "z", "A" - "Z", "_", "0" - "9"] )* >
@@ -107,7 +107,8 @@ Token VariableDataTypes() #VariableBlockStart :
 
 void VariableDeclaration() #VariableDeclaration:
 {
-Token dataType, identifier;
+Token dataType, identifier, dataVal;
+String actualType;
 }
 
 {
@@ -123,7 +124,16 @@ Token dataType, identifier;
             symTb.put(identifier.image, symTb.lastValue());
         }
 
-    ( <ASSIGNMENT> (<REAL> | <STRING> | <DIGIT> | <DECIMAL>) )? )*  <SEMICOLON>)+
+        ( <ASSIGNMENT> (dataVal=<REAL> | dataVal=<STRING> | dataVal=<DIGIT> | dataVal=<DECIMAL>)
+          {
+            actualType= sa.infereType(dataVal.image);
+            if(symTb.lastValue() != actualType) {
+                throw new AssertionError("Type mismatch at lno:" + dataVal.beginLine + ",col:" + dataVal.beginColumn + ". Expected value of type '" + dataType.image + "' but got of type ' " + actualType + "'. ");
+            }
+          }
+          
+
+        )? )*<SEMICOLON>)+
 
 }
 

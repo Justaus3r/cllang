@@ -2,7 +2,7 @@ startProgram
   variables:
     int i,y=10;
     string yy;
-    int j;
+    float j;
   code:
     outString(i);
     yy="HELLO";
@@ -14,9 +14,9 @@ startProgram
     switchfor j
     case 3:
         i=10;
-        j= 2;
+        j= 2.2;
     case 5:
-        j=200;
+        j=20.0;
         i=0;
     endswitchfor
 endProgram
