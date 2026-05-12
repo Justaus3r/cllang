@@ -6,6 +6,7 @@ PARSER_BEGIN(CLLang)
 package CLLang;
 
 import java.util.HashMap;
+import java.util.ArrayList;
 
 public class CLLang {
     public static SymbolTable symTb;
@@ -174,41 +175,69 @@ Token t;
   }
 }
 
-void AirhtemicOperators() #AirhtemicOperators : {}{
-  <PLUS>
-| <MINUS>
-| <ASTERISK>
-| <DIVIDE>
+Token ArithemicOperators() #ArithemicOperators : {
+Token t;
+}{
+  (
+  t=<PLUS>
+| t=<MINUS>
+| t=<ASTERISK>
+| t=<DIVIDE>
+  )
+
+  {return t;}
 }
 
-void ArithemicExpression() #ArithemicExpression : {}{
- (<IDENTIFIER> | <DIGIT> | <REAL> | <DECIMAL> )
-    AirhtemicOperators()
- (<IDENTIFIER> | <DIGIT> | <REAL> | <DECIMAL> )
+ArrayList<String> ArithemicExpression() #ArithemicExpression : 
+{
+Token t, op;
+ArrayList<String> expression_list = new ArrayList<String>();
+}
+{ 
+ (t=<IDENTIFIER> | t=<DIGIT> | t=<REAL> | t=<DECIMAL> ) {expression_list.add(t.image);}
+    op=ArithemicOperators() {expression_list.add(op.image);}
+ (t=<IDENTIFIER> | t=<DIGIT> | t=<REAL> | t=<DECIMAL> ) {expression_list.add(t.image);}
+ (
+    op=ArithemicOperators() {expression_list.add(op.image);}
+    (t=<IDENTIFIER> | t=<DIGIT> | t=<REAL> | t=<DECIMAL> ) {expression_list.add(t.image);}
+ )*
+ 
+ {return expression_list;}
 }
 
 void AssignmentStmt() #AssignmentStmt :
 {
-Token t;
-String identifierName, tokenType;
+Token id, val;
+// the idea here is that , by default we assume the right side of assignment to be an expression
+// however , if that is not true, we instantly assign the string value to identifierValue. But , if identifierValue is
+// still <expr>, we assume it to be of type 'expression' and build the identifierValue string from ArrayList<String>
+// returned by the ArithemicExpression() production
+
+String identifierName, identifierValue="<expr>", tokenType;
 String declaredType;
+ArrayList<String> expr_list =  new ArrayList<String>();
 HashMap<String, String> keyValue;
 }
 {
-    t=<IDENTIFIER> { identifierName=t.image; } <ASSIGNMENT> (t=<REAL> | t=<STRING> | t=<DIGIT> | t=<DECIMAL> | ArithemicExpression()) <SEMICOLON>
+    id=<IDENTIFIER> { identifierName=id.image; } <ASSIGNMENT> (val=<REAL> {identifierValue=val.image;} | val=<STRING> {identifierValue=val.image;}|  val=<DIGIT> {identifierValue=val.image;} | val=<DECIMAL> {identifierValue=val.image;} | expr_list=ArithemicExpression()) <SEMICOLON> 
     {
-        tokenType = sa.infereType(t.image);
+        if(identifierValue.equals("<expr>")){
+           identifierValue = "";
+           identifierValue = String.join("", expr_list); 
+        }
+        tokenType = sa.infereType(identifierValue);
         declaredType = symTb.get(identifierName);
         System.out.println("Declared Type: " + declaredType + ", actual Type: " + tokenType);
-        if(tokenType != declaredType) {
-            throw new AssertionError("Type mismatch at lno:" + t.beginLine + ",col:" + t.beginColumn + ". Expected value of type '" + declaredType + "' but got of type ' " + tokenType + "'. ");
+        System.out.println("Value:" + expr_list);
+        if(tokenType != declaredType && !((tokenType == "int" && declaredType == "float") || (declaredType == "float" && declaredType == "int"))) {
+            throw new AssertionError("Type mismatch at Token '" + identifierValue + "'" + ". Expected value of type '" + declaredType + "' but got of type '" + tokenType + "'. ");
         }
     }
   
   // set value of this node, aka assignment value 
   {
     keyValue = new HashMap<String, String>();
-    keyValue.put(identifierName, t.image);
+    keyValue.put(identifierName, identifierValue);
     jjtThis.jjtSetValue(keyValue);
   }
 }
