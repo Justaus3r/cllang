@@ -16,7 +16,7 @@ startProgram
         i=10;
         j= 2.2;
     case 5:
-        j=20.0;
-        i=0;
+        j=3.145678;
+        i=3;
     endswitchfor
 endProgram

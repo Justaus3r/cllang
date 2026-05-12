@@ -20,13 +20,15 @@ test:
 	[ $$? != 0 ] && echo "[FAILURE] Parsing Failed! " || echo "[SUCCESS] Parsing Passed!"
 
 clean:
-	# if conditional fails the retcode is 1 and it fucks up the flow, the || provides shorcircuit to true
+	# if conditional fails the retcode is 1 and it fucks up the flow, the || provides shorcircuit to true to keep retcode 0
 	ls $(SRC_DIR) | grep .class && rm $(SRC_DIR)*.class || true 
 	mv $(SRC_DIR)SymbolTable.java $(SRC_DIR)SymbolTable
 	mv $(SRC_DIR)SemanticAnalysis.java $(SRC_DIR)SemanticAnalysis
+	mv $(SRC_DIR)IRGeneration.java $(SRC_DIR)IRGeneration
 	ls $(SRC_DIR) | grep .java && rm $(SRC_DIR)*.java || true
 	mv $(SRC_DIR)SymbolTable $(SRC_DIR)SymbolTable.java
 	mv $(SRC_DIR)SemanticAnalysis $(SRC_DIR)SemanticAnalysis.java
+	mv $(SRC_DIR)IRGeneration $(SRC_DIR)IRGeneration.java
 	ls $(SRC_DIR) | grep .jj && rm $(SRC_DIR)*.jj || true
 
 eof:

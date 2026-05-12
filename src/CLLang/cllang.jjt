@@ -5,17 +5,34 @@ options {
 PARSER_BEGIN(CLLang)
 package CLLang;
 
+import java.util.HashMap;
+
 public class CLLang {
     public static SymbolTable symTb;
     public static SemanticAnalysis sa;
+    public static IRGeneration irG;
 
     public static void main(String argv[]) throws ParseException {
         symTb = new SymbolTable();
         sa = new SemanticAnalysis();
+        irG = new IRGeneration();
 
         CLLang parser = new CLLang(System.in);
         parser.Start();
         symTb.printSymbolTable();
+
+        System.out.println("********* PARSE TREE (AST) ********* ");
+        SimpleNode root = (SimpleNode)parser.jjtree.rootNode();
+        root.dump(" ");
+        System.out.println("************************************");
+    
+        
+        System.out.println("********* Itermediate Representation ********* ");
+            irG.generateIR(root);
+            for(Quadruple q: irG.irList){
+                System.out.println(q.toString());
+            }
+        System.out.println("************************************");
     }
 
 }
@@ -94,7 +111,7 @@ void VariableBlockStart() #VariableBlockStart : {}{
  <VARIABLESTART> <COLON>
 }
 
-Token VariableDataTypes() #VariableBlockStart :
+Token VariableDataTypes() #VariableDataTypes :
 {
   Token t;
 }
@@ -146,8 +163,15 @@ void CodeBlockStart() #CodeBlockStart : {}{
  <CODESTART> <COLON>
 }
 
-void OutStmt() #OutStmt : {}{
-  <PrintOut> <OpenParenthesis> (<IDENTIFIER> | <STRING> | <REAL> | <DECIMAL> ) <CloseParenthesis> <SEMICOLON>
+void OutStmt() #OutStmt : {
+Token t;
+}{
+  <PrintOut> <OpenParenthesis> (t=<IDENTIFIER> | t=<STRING> | t=<REAL> | t=<DECIMAL> ) <CloseParenthesis> <SEMICOLON>
+  
+  // set node value
+  {
+    jjtThis.jjtSetValue(t.image);
+  }
 }
 
 void AirhtemicOperators() #AirhtemicOperators : {}{
@@ -168,6 +192,7 @@ void AssignmentStmt() #AssignmentStmt :
 Token t;
 String identifierName, tokenType;
 String declaredType;
+HashMap<String, String> keyValue;
 }
 {
     t=<IDENTIFIER> { identifierName=t.image; } <ASSIGNMENT> (t=<REAL> | t=<STRING> | t=<DIGIT> | t=<DECIMAL> | ArithemicExpression()) <SEMICOLON>
@@ -179,10 +204,17 @@ String declaredType;
             throw new AssertionError("Type mismatch at lno:" + t.beginLine + ",col:" + t.beginColumn + ". Expected value of type '" + declaredType + "' but got of type ' " + tokenType + "'. ");
         }
     }
+  
+  // set value of this node, aka assignment value 
+  {
+    keyValue = new HashMap<String, String>();
+    keyValue.put(identifierName, t.image);
+    jjtThis.jjtSetValue(keyValue);
+  }
 }
 
 void ConditionalStmt() #ConditionalStmt : {} {
-  <IDENTIFIER> (<GREATERTHAN> | <SMALLERTHAN> | <GREATEROREQUAL> | <SMALLEROREQUAL>) (<REAL> | <STRING>)
+  <IDENTIFIER> (<GREATERTHAN> | <SMALLERTHAN> | <GREATEROREQUAL> | <SMALLEROREQUAL>) (<REAL> | <STRING> | <DECIMAL>)
 }
 
 void LoopStmt() #LoopStmt : {}{
