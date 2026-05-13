@@ -1,7 +1,6 @@
 package CLLang;
 
 import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
 public class SemanticAnalysis {
     
@@ -12,7 +11,7 @@ public class SemanticAnalysis {
 
     public SemanticAnalysis(){
         this.intRe = Pattern.compile("\\d+", Pattern.CASE_INSENSITIVE);
-        this.floatRe =  Pattern.compile("\\d+.\\d+", Pattern.CASE_INSENSITIVE);
+        this.floatRe =  Pattern.compile("\\d+\\.\\d+", Pattern.CASE_INSENSITIVE);
         this.stringRe =  Pattern.compile("\"[\\w | \\s]+\"", Pattern.CASE_INSENSITIVE);
         // God help, what horrific , demon summoning i have written below
         // and yes. the following regex matches expressions with varying whitespaces, depth, parenthesis, etc

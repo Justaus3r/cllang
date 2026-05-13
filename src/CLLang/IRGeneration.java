@@ -1,7 +1,9 @@
 package CLLang;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
+import java.util.regex.Pattern;
 
 class Quadruple {
   public String instruction;
@@ -18,14 +20,14 @@ class Quadruple {
 
   public String toString() {
     String strOp = "";
-    if (instruction.equals("-") || instruction.equals("+")) {
+    if (instruction.matches("[\\+\\-\\* \\/\\%]")) {
       strOp = result + " = " + operand1 + instruction + operand2;
+    } else if(operand1.matches("\\d+") && operand2.equals("")){
+      strOp = result + "=" + operand1; 
     } else if (instruction.equals("outString")) {
       strOp = instruction + "(" + operand1 + ")";
-    }
-
-    else if(instruction.equals("\"")){
-        strOp = result + " = " + operand2;
+    } else if (instruction.equals("\"")) {
+      strOp = result + " = " + operand2;
     }
 
     return strOp;
@@ -37,11 +39,17 @@ class IRGeneration {
   public Vector<Quadruple> irList;
   private HashMap<String, String> varTempMap;
   private int tempVarCount;
+  private static Pattern binaryExprRe;
 
   public IRGeneration() {
     irList = new Vector<>();
-    varTempMap = new HashMap<String,String>(); 
+    varTempMap = new HashMap<String, String>();
     tempVarCount = 0;
+    binaryExprRe =
+        Pattern.compile(
+            "\\(?\\s*[\\w+ | \\d+ | \\s+]\\s*[\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ |"
+                + " \\s+]\\s*([\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ | \\s+])*\\s*\\)?",
+            Pattern.CASE_INSENSITIVE);
   }
 
   public void generateIR(Node root) {
@@ -78,18 +86,85 @@ class IRGeneration {
           String value = kV.values().iterator().next();
           String op = "";
           String firstChar = "" + value.charAt(0);
-          if(firstChar.equals("\"")){
-              op = "\"";
-          } 
-          else if (firstChar.equals("-")) {
-            op = "-";
-          } else {
-            op = "+";
+          // if assignment is a string:
+          if (firstChar.equals("\"")) {
+            op = "\"";
           }
-          String tempvar = this.generateTempVar(key);
-          q = new Quadruple(op, "0", value, tempvar);
-          irList.add(q);
-          break;
+          // if assignment is an binary expression
+          else if (binaryExprRe.matcher(value).matches()) {
+            value = value.replaceAll("[\\( | \\)]", "");
+            String elementList[] = value.split("[\\+\\-\\* \\/\\%]");
+            ArrayList<String> operatorList = new ArrayList<String>();
+            for (char c : value.toCharArray()) {
+              if (c == '+' || c == '-' || c == '*' || c == '/' || c == '%') {
+                operatorList.add(String.valueOf(c));
+              }
+            }
+            if (operatorList.size() != elementList.length - 1) {
+              throw new ArithmeticException(
+                  "Mismatch between operators and operands count. operators should be operands - 1"
+                      + " in count");
+            }
+
+            ArrayList<String> expressionList = new ArrayList<String>();
+            String operatorListCharArray[] = operatorList.toArray(new String[0]);
+            int operatorCount = operatorListCharArray.length;
+            for (int i = 0; i < elementList.length; ++i) {
+              expressionList.add(elementList[i]);
+              if (!(i == elementList.length - 1)) {
+                expressionList.add(operatorListCharArray[i]);
+              }
+            }
+            String tempVar;
+            int jumpIdx=0;
+            for (int i = 0; i < operatorCount; ++i) {
+              if(expressionList.get(jumpIdx).matches("[\\+\\-\\* \\/\\%]")){ // curr token is operator
+                  Quadruple lastQ = irList.getLast();
+                  String lastT = lastQ.result;
+                  String operator = expressionList.get(jumpIdx);
+                  String operand2 = expressionList.get(jumpIdx+1);
+                  tempVar = generateTempVar(key);
+                  q = new Quadruple(operator, lastT, operand2, tempVar);
+                  irList.add(q);
+                  jumpIdx += 3;
+                  continue;
+              }
+              String operand1 = expressionList.get(jumpIdx);
+              String operator = expressionList.get(jumpIdx + 1);
+              String operand2 = expressionList.get(jumpIdx + 2); 
+              // ******* SINGLE BINARY EXPRESSION IR GENERATION AND PRE-OPTIMIZATION PHASE *********
+              if ((operand1.equals("0") || operand2.equals("0")) && operator.equals("*")) {
+                tempVar = generateTempVar(key);
+                q = new Quadruple("", "0", "", tempVar);
+              } else if (((operand1.equals("1") || operand2.equals("1")) && operator.equals("*"))) {
+                String res = (operand1.equals("1")) ? operand1 : operand2;
+                tempVar = generateTempVar(key);
+                q =  new Quadruple("",res, "", tempVar);
+              } else if(operand1.matches("\\d+(.\\d+)?") && operand2.matches("\\d+(.\\d+)?")){  
+                  int n1 = Integer.valueOf(operand1);
+                  int n2 = Integer.valueOf(operand2);
+                  int res = 0;
+                  if(operator.equals("+")){
+                    res = n1 + n2;
+                  } else if(operator.equals("-")){
+                    res = n1 - n2; 
+                  } else if(operator.equals("*")){
+                    res = n1 * n2; 
+                  } else if(operator.equals("/")){
+                    res = n1 / n2;
+                  }
+                  tempVar = generateTempVar(key);
+                  q = new Quadruple("", String.valueOf(res), "", tempVar);
+              } else {
+                  tempVar = generateTempVar(key);
+                  q = new Quadruple(operator, operand1, operand2, tempVar);
+              }
+            irList.add(q);
+            jumpIdx += 3;
+          }
+        }
+        // unary expression else below
+        break;
         }
       case "OutStmt":
         String stringOut = (String) node.jjtGetValue();

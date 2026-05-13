@@ -1,6 +1,6 @@
 startProgram
   variables:
-    int i,y=10,d;
+    int i,y=10,d,b,c,d, l, m, z;
     string yy;
     float j;
   code:
@@ -8,7 +8,11 @@ startProgram
     yy="HELLO";
     j=5.33;
     i = 10;
-    d = i + y +j;
+    d = i*y-d;
+    i = b*d-c;
+    l = b+c;
+    m = 1+5;
+    z = m*0;
     outString(yy);
     loopif y < 10 holds
     endloop

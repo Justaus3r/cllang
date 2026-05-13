@@ -193,15 +193,18 @@ ArrayList<String> ArithemicExpression() #ArithemicExpression :
 Token t, op;
 ArrayList<String> expression_list = new ArrayList<String>();
 }
-{ 
+{
+ (
  (t=<IDENTIFIER> | t=<DIGIT> | t=<REAL> | t=<DECIMAL> ) {expression_list.add(t.image);}
-    op=ArithemicOperators() {expression_list.add(op.image);}
+    op=ArithemicOperators() {expression_list.add(op.image);} 
  (t=<IDENTIFIER> | t=<DIGIT> | t=<REAL> | t=<DECIMAL> ) {expression_list.add(t.image);}
+ )
  (
     op=ArithemicOperators() {expression_list.add(op.image);}
     (t=<IDENTIFIER> | t=<DIGIT> | t=<REAL> | t=<DECIMAL> ) {expression_list.add(t.image);}
  )*
  
+
  {return expression_list;}
 }
 
@@ -219,7 +222,15 @@ ArrayList<String> expr_list =  new ArrayList<String>();
 HashMap<String, String> keyValue;
 }
 {
-    id=<IDENTIFIER> { identifierName=id.image; } <ASSIGNMENT> (val=<REAL> {identifierValue=val.image;} | val=<STRING> {identifierValue=val.image;}|  val=<DIGIT> {identifierValue=val.image;} | val=<DECIMAL> {identifierValue=val.image;} | expr_list=ArithemicExpression()) <SEMICOLON> 
+    id=<IDENTIFIER> { identifierName=id.image; } <ASSIGNMENT> (
+    LOOKAHEAD(2) 
+    expr_list=ArithemicExpression()
+    | val=<IDENTIFIER> {identifierValue=val.image;}
+    | val=<REAL> {identifierValue=val.image;} 
+    | val=<STRING> {identifierValue=val.image;} 
+    | val=<DIGIT> {identifierValue=val.image;} 
+    | val=<DECIMAL> {identifierValue=val.image;}
+  ) <SEMICOLON> 
     {
         if(identifierValue.equals("<expr>")){
            identifierValue = "";
