@@ -253,14 +253,27 @@ HashMap<String, String> keyValue;
   }
 }
 
-void ConditionalStmt() #ConditionalStmt : {} {
-  <IDENTIFIER> (<GREATERTHAN> | <SMALLERTHAN> | <GREATEROREQUAL> | <SMALLEROREQUAL>) (<REAL> | <STRING> | <DECIMAL>)
+void ConditionalStmt() #ConditionalStmt : 
+{
+Token t;
+String id, op, val, conditionalstmt;
+} {
+  t=<IDENTIFIER> {id=t.image;} (t=<GREATERTHAN> |t=<SMALLERTHAN>|t=<GREATEROREQUAL>|t=<SMALLEROREQUAL>) {op=t.image;} (t=<REAL> |t=<STRING> |t=<DECIMAL>) {val=t.image;}
+
+  {
+    conditionalstmt = id + op + val;
+    jjtThis.jjtSetValue(conditionalstmt);
+  }
+}
+
+void LoopEnd() #LoopEnd:{}{
+  <LOOPEND>
 }
 
 void LoopStmt() #LoopStmt : {}{
   <LOOPSTART> ConditionalStmt() <LOOPHOLDS>
   (AssignmentStmt())*
-  <LOOPEND>
+  LoopEnd()
 }
 
 void SwitchCaseBody() #SwitchCaseBody : {}{

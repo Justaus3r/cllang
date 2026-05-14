@@ -21,13 +21,21 @@ class Quadruple {
   public String toString() {
     String strOp = "";
     if (instruction.matches("[\\+\\-\\* \\/\\%]")) {
+      // binary expression assignment
       strOp = result + " = " + operand1 + instruction + operand2;
-    } else if(operand1.matches("\\d+") && operand2.equals("")){
-      strOp = result + "=" + operand1; 
+    } else if (operand1.matches("\\d+|\\d+\\.\\d+") && operand2.equals("")) {
+      // unary expression assignment
+      strOp = result + " = " + operand1;
     } else if (instruction.equals("outString")) {
+      // outString
       strOp = instruction + "(" + operand1 + ")";
     } else if (instruction.equals("\"")) {
+      // string assigment
       strOp = result + " = " + operand2;
+    } else if (instruction.matches("L\\d+")) {
+      strOp = instruction + ":";
+    } else if(instruction.equals("if") || instruction.equals("goto")){
+        strOp = instruction + " " + operand1;
     }
 
     return strOp;
@@ -39,17 +47,24 @@ class IRGeneration {
   public Vector<Quadruple> irList;
   private HashMap<String, String> varTempMap;
   private int tempVarCount;
-  private static Pattern binaryExprRe;
+  private int loopLabelCount;
+  private static Pattern unaryExprRe, binaryExprRe;
+  private String loopInLabel, loopOutLabel;
+  private ArrayList<String> processedConditionalsList;
 
   public IRGeneration() {
     irList = new Vector<>();
     varTempMap = new HashMap<String, String>();
     tempVarCount = 0;
+    loopLabelCount = 0;
+    loopInLabel = "";
+    loopOutLabel = "";
     binaryExprRe =
         Pattern.compile(
             "\\(?\\s*[\\w+ | \\d+ | \\s+]\\s*[\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ |"
                 + " \\s+]\\s*([\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ | \\s+])*\\s*\\)?",
             Pattern.CASE_INSENSITIVE);
+    unaryExprRe = Pattern.compile("\\d+|\\d+\\.\\d+|\\w+");
   }
 
   public void generateIR(Node root) {
@@ -69,8 +84,16 @@ class IRGeneration {
     return tempVar;
   }
 
+  private String[] generateLoopLabels() {
+    String loopIn = "L" + loopLabelCount;
+    loopLabelCount += 1;
+    String loopOut = "L" + loopLabelCount;
+    return new String[] {loopIn, loopOut};
+  }
+
   private void visitNode(Node n) {
     Quadruple q;
+    String tempVar;
     if (n.jjtGetNumChildren() > 0) {
       for (int i = 0; i < n.jjtGetNumChildren(); ++i) {
         this.visitNode(n.jjtGetChild(i));
@@ -115,23 +138,24 @@ class IRGeneration {
                 expressionList.add(operatorListCharArray[i]);
               }
             }
-            String tempVar;
-            int jumpIdx=0;
+            int jumpIdx = 0;
             for (int i = 0; i < operatorCount; ++i) {
-              if(expressionList.get(jumpIdx).matches("[\\+\\-\\* \\/\\%]")){ // curr token is operator
-                  Quadruple lastQ = irList.getLast();
-                  String lastT = lastQ.result;
-                  String operator = expressionList.get(jumpIdx);
-                  String operand2 = expressionList.get(jumpIdx+1);
-                  tempVar = generateTempVar(key);
-                  q = new Quadruple(operator, lastT, operand2, tempVar);
-                  irList.add(q);
-                  jumpIdx += 3;
-                  continue;
+              if (expressionList
+                  .get(jumpIdx)
+                  .matches("[\\+\\-\\* \\/\\%]")) { // curr token is operator
+                Quadruple lastQ = irList.getLast();
+                String lastT = lastQ.result;
+                String operator = expressionList.get(jumpIdx);
+                String operand2 = expressionList.get(jumpIdx + 1);
+                tempVar = generateTempVar(key);
+                q = new Quadruple(operator, lastT, operand2, tempVar);
+                irList.add(q);
+                jumpIdx += 3;
+                continue;
               }
               String operand1 = expressionList.get(jumpIdx);
               String operator = expressionList.get(jumpIdx + 1);
-              String operand2 = expressionList.get(jumpIdx + 2); 
+              String operand2 = expressionList.get(jumpIdx + 2);
               // ******* SINGLE BINARY EXPRESSION IR GENERATION AND PRE-OPTIMIZATION PHASE *********
               if ((operand1.equals("0") || operand2.equals("0")) && operator.equals("*")) {
                 tempVar = generateTempVar(key);
@@ -139,37 +163,86 @@ class IRGeneration {
               } else if (((operand1.equals("1") || operand2.equals("1")) && operator.equals("*"))) {
                 String res = (operand1.equals("1")) ? operand1 : operand2;
                 tempVar = generateTempVar(key);
-                q =  new Quadruple("",res, "", tempVar);
-              } else if(operand1.matches("\\d+(.\\d+)?") && operand2.matches("\\d+(.\\d+)?")){  
-                  int n1 = Integer.valueOf(operand1);
-                  int n2 = Integer.valueOf(operand2);
-                  int res = 0;
-                  if(operator.equals("+")){
-                    res = n1 + n2;
-                  } else if(operator.equals("-")){
-                    res = n1 - n2; 
-                  } else if(operator.equals("*")){
-                    res = n1 * n2; 
-                  } else if(operator.equals("/")){
-                    res = n1 / n2;
-                  }
-                  tempVar = generateTempVar(key);
-                  q = new Quadruple("", String.valueOf(res), "", tempVar);
+                q = new Quadruple("", res, "", tempVar);
+              } else if (operand1.matches("\\d+(.\\d+)?") && operand2.matches("\\d+(.\\d+)?")) {
+                int n1 = Integer.valueOf(operand1);
+                int n2 = Integer.valueOf(operand2);
+                int res = 0;
+                if (operator.equals("+")) {
+                  res = n1 + n2;
+                } else if (operator.equals("-")) {
+                  res = n1 - n2;
+                } else if (operator.equals("*")) {
+                  res = n1 * n2;
+                } else if (operator.equals("/")) {
+                  res = n1 / n2;
+                }
+                tempVar = generateTempVar(key);
+                q = new Quadruple("", String.valueOf(res), "", tempVar);
               } else {
-                  tempVar = generateTempVar(key);
-                  q = new Quadruple(operator, operand1, operand2, tempVar);
+                tempVar = generateTempVar(key);
+                q = new Quadruple(operator, operand1, operand2, tempVar);
               }
-            irList.add(q);
-            jumpIdx += 3;
+              irList.add(q);
+              jumpIdx += 3;
+            }
           }
-        }
-        // unary expression else below
-        break;
+          // unary expression else below
+          else if (unaryExprRe.matcher(value).matches()) {
+            tempVar = generateTempVar(key);
+            q = new Quadruple("", value, "", tempVar);
+            irList.add(q);
+          } else {
+            System.out.println("OTHER:" + value);
+          }
+          break;
         }
       case "OutStmt":
-        String stringOut = (String) node.jjtGetValue();
-        q = new Quadruple("outString", stringOut, "", "");
-        irList.add(q);
+        {
+          String stringOut = (String) node.jjtGetValue();
+          q = new Quadruple("outString", stringOut, "", "");
+          irList.add(q);
+          break;
+        }
+      case "LoopStmt":
+        {
+          // no need to do anything
+          break;
+        }
+      case "LoopEnd":
+        {
+          q = new Quadruple(loopOutLabel, "", "", "");
+          irList.add(q);
+
+          loopInLabel = "";
+          loopOutLabel = "";
+
+          break;
+        }
+      case "ConditionalStmt":
+        {
+          String loopLabels[] = generateLoopLabels();
+          String loopIn = loopLabels[0];
+          String loopOut = loopLabels[1];
+          loopInLabel = loopIn;
+          loopOutLabel = loopOut;
+          
+          String cond = (String) node.jjtGetValue();
+
+          String condIfStmt = cond + " " + "goto" + " " + loopInLabel;
+          String condElseStmt = loopOutLabel;
+          // if
+          q = new Quadruple("if", condIfStmt, "", "");
+          irList.add(q);
+          // else
+          q = new Quadruple("goto", condElseStmt, "", "");
+          irList.add(q);
+          
+          // now add loopIn label
+          q = new Quadruple(loopInLabel, "", "", "");
+          irList.add(q);
+          break;
+        }
     }
   }
 }

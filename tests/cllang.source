@@ -15,6 +15,7 @@ startProgram
     z = m*0;
     outString(yy);
     loopif y < 10 holds
+     l = 5 - 1;
     endloop
     switchfor j
     case 3:
