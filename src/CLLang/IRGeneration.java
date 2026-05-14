@@ -34,8 +34,8 @@ class Quadruple {
       strOp = result + " = " + operand2;
     } else if (instruction.matches("L\\d+")) {
       strOp = instruction + ":";
-    } else if(instruction.equals("if") || instruction.equals("goto")){
-        strOp = instruction + " " + operand1;
+    } else if (instruction.equals("if") || instruction.equals("goto")) {
+      strOp = instruction + " " + operand1;
     }
 
     return strOp;
@@ -88,6 +88,7 @@ class IRGeneration {
     String loopIn = "L" + loopLabelCount;
     loopLabelCount += 1;
     String loopOut = "L" + loopLabelCount;
+    loopLabelCount += 1;
     return new String[] {loopIn, loopOut};
   }
 
@@ -226,7 +227,7 @@ class IRGeneration {
           String loopOut = loopLabels[1];
           loopInLabel = loopIn;
           loopOutLabel = loopOut;
-          
+
           String cond = (String) node.jjtGetValue();
 
           String condIfStmt = cond + " " + "goto" + " " + loopInLabel;
@@ -237,7 +238,7 @@ class IRGeneration {
           // else
           q = new Quadruple("goto", condElseStmt, "", "");
           irList.add(q);
-          
+
           // now add loopIn label
           q = new Quadruple(loopInLabel, "", "", "");
           irList.add(q);
