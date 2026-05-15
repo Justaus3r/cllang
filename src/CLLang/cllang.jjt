@@ -33,7 +33,16 @@ public class CLLang {
             for(Quadruple q: irG.irList){
                 System.out.println(q.toString());
             }
-        System.out.println("************************************");
+        System.out.println("**********************************************");
+        irG.postIROptimization();
+        
+        System.out.println("\n\n********* Itermediate Representation(After Optimization) ********* ");
+            for(Quadruple q: irG.irList){
+                System.out.println(q.toString());
+            }
+        System.out.println("**********************************************");
+
+
     }
 
 }
@@ -276,14 +285,50 @@ void LoopStmt() #LoopStmt : {}{
   LoopEnd()
 }
 
-void SwitchCaseBody() #SwitchCaseBody : {}{
-  ((<SWITCHCASE> | <SWITCHOTHER>) (<REAL> | <DIGIT> | <STRING>) <COLON> ( AssignmentStmt() )+ )+
+void SwitchCaseMatch() #SwitchCaseMatch: 
+{
+Token t;
+String match;
+}{
+(t=<REAL> |t=<DECIMAL> |t=<DIGIT> |t=<STRING>)
+  {
+    match=t.image;
+    jjtThis.jjtSetValue(match);
+  }
 }
 
-void SwitchCaseStmt() #SwitchCaseStmt : {}{
-  <SWITCHFOR> ( <IDENTIFIER> | <REAL> | <DIGIT>) 
-  SwitchCaseBody()
+void SwitchCase() #SwitchCase: {}{
+  (<SWITCHCASE> | <SWITCHOTHER>)  SwitchCaseMatch() <COLON> ( AssignmentStmt() )+
+}
+
+void SwitchCaseBody() #SwitchCaseBody : {}{
+  (SwitchCase())+
+}
+
+void SwitchCaseStmtIdentifier() #SwitchCaseStmtIdentifier : {
+Token t;
+String id;
+}{
+    t=<IDENTIFIER>
+    {
+    id=t.image;
+    jjtThis.jjtSetValue(id);
+    }
+}
+
+void StartSwitchFor() # StartSwitchFor: {}{
+  <SWITCHFOR>
+}
+
+void EndSwitchFor() #EndSwitchFor: {}{
   <ENDSWITCHFOR>
+}
+
+void SwitchCaseStmt() #SwitchCaseStmt : {
+}{
+  StartSwitchFor() SwitchCaseStmtIdentifier() 
+  SwitchCaseBody()
+  EndSwitchFor()
 }
 
 void Stmts() #Stmts : {}{

@@ -32,10 +32,19 @@ class Quadruple {
     } else if (instruction.equals("\"")) {
       // string assigment
       strOp = result + " = " + operand2;
-    } else if (instruction.matches("L\\d+")) {
+    } else if (instruction.matches("L\\d+")
+        || instruction.matches("C\\d+")
+        || instruction.matches("LS\\d+")) {
+      // loop, swtichcase labels
       strOp = instruction + ":";
-    } else if (instruction.equals("if") || instruction.equals("goto")) {
+    } else if (instruction.equals("if")
+        || instruction.equals("else if")
+        || instruction.equals("goto")) {
+      // loop if else
       strOp = instruction + " " + operand1;
+    } else if (instruction.equals("==")) {
+      // switch case == condition
+      strOp = "if" + " " + operand1 + instruction + operand2 + " " + result;
     }
 
     return strOp;
@@ -46,19 +55,32 @@ class IRGeneration {
 
   public Vector<Quadruple> irList;
   private HashMap<String, String> varTempMap;
+  //             id       {idCount, idPos} 
+  public HashMap<String, int[]> identifierReferenceMap;
+
   private int tempVarCount;
   private int loopLabelCount;
+  private int switchcaseLabelCount;
+  private int loopStartLabelCount;
+
   private static Pattern unaryExprRe, binaryExprRe;
   private String loopInLabel, loopOutLabel;
-  private ArrayList<String> processedConditionalsList;
+  private String switchcaseIdentifier;
+  private int processedSwitchCase;
 
   public IRGeneration() {
     irList = new Vector<>();
     varTempMap = new HashMap<String, String>();
+    identifierReferenceMap = new HashMap<String, int[]>();
+
     tempVarCount = 0;
     loopLabelCount = 0;
+    switchcaseLabelCount = 0;
+    loopStartLabelCount = 0;
     loopInLabel = "";
     loopOutLabel = "";
+    switchcaseIdentifier = "";
+    processedSwitchCase = 0;
     binaryExprRe =
         Pattern.compile(
             "\\(?\\s*[\\w+ | \\d+ | \\s+]\\s*[\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ |"
@@ -90,6 +112,20 @@ class IRGeneration {
     String loopOut = "L" + loopLabelCount;
     loopLabelCount += 1;
     return new String[] {loopIn, loopOut};
+  }
+
+  private String generateLoopStartLabel() {
+    String loopStartLabel = "LS" + loopStartLabelCount;
+    loopStartLabelCount += 1;
+
+    return loopStartLabel;
+  }
+
+  private String generateSwitchCaseLabel() {
+    String switchCaseLabel = "C" + switchcaseLabelCount;
+    switchcaseLabelCount += 1;
+
+    return switchCaseLabel;
   }
 
   private void visitNode(Node n) {
@@ -212,6 +248,12 @@ class IRGeneration {
         }
       case "LoopEnd":
         {
+          int prevLoopStartLabelCount = loopStartLabelCount - 1;
+          String prevLoopLabel = "LS" + prevLoopStartLabelCount;
+          // add goto that jumps to the condition
+          q = new Quadruple("goto", prevLoopLabel, "", "");
+          irList.add(q);
+
           q = new Quadruple(loopOutLabel, "", "", "");
           irList.add(q);
 
@@ -230,6 +272,12 @@ class IRGeneration {
 
           String cond = (String) node.jjtGetValue();
 
+          // generate a loop start label to which we can jump back to recheck condition after an
+          // iteration
+          String loopStartLabel = generateLoopStartLabel();
+          q = new Quadruple(loopStartLabel, "", "", "");
+          irList.add(q);
+          // if else strings
           String condIfStmt = cond + " " + "goto" + " " + loopInLabel;
           String condElseStmt = loopOutLabel;
           // if
@@ -244,6 +292,74 @@ class IRGeneration {
           irList.add(q);
           break;
         }
+      case "SwitchCaseStmt":
+        {
+          processedSwitchCase = 0;
+        }
+      case "SwitchCaseStmtIdentifier":
+        {
+          String id = (String) node.jjtGetValue();
+          switchcaseIdentifier = id;
+          break;
+        }
+      case "SwitchCaseMatch":
+        {
+          String match = (String) node.jjtGetValue();
+          String caseLabel = generateSwitchCaseLabel();
+          String ifCond = switchcaseIdentifier + "==" + match +  " " + "goto" + " " + caseLabel;
+          String condType = "if";
+          if (processedSwitchCase > 0) {
+            condType = "else if";
+          }
+          q = new Quadruple(condType, ifCond, "", "");
+          irList.add(q);
+          q = new Quadruple(caseLabel, "", "", "");
+          irList.add(q);
+          
+          processedSwitchCase += 1;
+          break;
+        }
+      case "EndSwitchFor":
+        {
+          // reset the processed switch-case since we have exited the block
+          processedSwitchCase = 0;
+        }
     }
+  }
+
+  public void postIROptimization(){
+      // perform dead code elimination as post optimizatoin
+      int[] idCountPos = new int[2];
+      int count = 0;
+      for(Quadruple q: irList){
+          String id =  q.result;
+          if(identifierReferenceMap.containsKey(id)){
+              // increment the reference
+              idCountPos = new int[] {identifierReferenceMap.get(id)[0] + 1, count};
+              System.out.println(idCountPos);
+              identifierReferenceMap.put(id,  idCountPos);
+          }
+          else if(id.matches("t\\d+")){
+              // reference not in our map, but the id is still a valid temp var
+              idCountPos = new int[] {0, count};
+              identifierReferenceMap.put(id, idCountPos);
+          }
+          count += 1;
+      }
+
+      int normal = 0;
+      for(HashMap.Entry<String, int[]> entry: identifierReferenceMap.entrySet()){
+          String k = entry.getKey();
+          int[] v = entry.getValue(); // count, post
+          if(v[0] == 0){
+              // remove the entry
+              System.out.println("K: " + k + " V: " + v[1]);
+              irList.remove(v[1] -  normal);
+              // each time an element is removed, the array is shortened
+              // so we need to apply normal to fix the indices
+              normal += 1;
+          }
+      }
+
   }
 }
