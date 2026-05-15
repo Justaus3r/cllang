@@ -55,7 +55,7 @@ class IRGeneration {
 
   public Vector<Quadruple> irList;
   private HashMap<String, String> varTempMap;
-  //             id       {idCount, idPos} 
+  //             id       {idCount, idPos}
   public HashMap<String, int[]> identifierReferenceMap;
 
   private int tempVarCount;
@@ -306,7 +306,7 @@ class IRGeneration {
         {
           String match = (String) node.jjtGetValue();
           String caseLabel = generateSwitchCaseLabel();
-          String ifCond = switchcaseIdentifier + "==" + match +  " " + "goto" + " " + caseLabel;
+          String ifCond = switchcaseIdentifier + "==" + match + " " + "goto" + " " + caseLabel;
           String condType = "if";
           if (processedSwitchCase > 0) {
             condType = "else if";
@@ -315,7 +315,7 @@ class IRGeneration {
           irList.add(q);
           q = new Quadruple(caseLabel, "", "", "");
           irList.add(q);
-          
+
           processedSwitchCase += 1;
           break;
         }
@@ -327,39 +327,36 @@ class IRGeneration {
     }
   }
 
-  public void postIROptimization(){
-      // perform dead code elimination as post optimizatoin
-      int[] idCountPos = new int[2];
-      int count = 0;
-      for(Quadruple q: irList){
-          String id =  q.result;
-          if(identifierReferenceMap.containsKey(id)){
-              // increment the reference
-              idCountPos = new int[] {identifierReferenceMap.get(id)[0] + 1, count};
-              System.out.println(idCountPos);
-              identifierReferenceMap.put(id,  idCountPos);
-          }
-          else if(id.matches("t\\d+")){
-              // reference not in our map, but the id is still a valid temp var
-              idCountPos = new int[] {0, count};
-              identifierReferenceMap.put(id, idCountPos);
-          }
-          count += 1;
+  public void postIROptimization() {
+    // perform dead code elimination as post optimizatoin
+    int[] idCountPos = new int[2];
+    int count = 0;
+    for (Quadruple q : irList) {
+      String id = q.result;
+      if (identifierReferenceMap.containsKey(id)) {
+        // increment the reference
+        idCountPos = new int[] {identifierReferenceMap.get(id)[0] + 1, count};
+        System.out.println(idCountPos);
+        identifierReferenceMap.put(id, idCountPos);
+      } else if (id.matches("t\\d+")) {
+        // reference not in our map, but the id is still a valid temp var
+        idCountPos = new int[] {0, count};
+        identifierReferenceMap.put(id, idCountPos);
       }
+      count += 1;
+    }
 
-      int normal = 0;
-      for(HashMap.Entry<String, int[]> entry: identifierReferenceMap.entrySet()){
-          String k = entry.getKey();
-          int[] v = entry.getValue(); // count, post
-          if(v[0] == 0){
-              // remove the entry
-              System.out.println("K: " + k + " V: " + v[1]);
-              irList.remove(v[1] -  normal);
-              // each time an element is removed, the array is shortened
-              // so we need to apply normal to fix the indices
-              normal += 1;
-          }
+    int normal = 0;
+    for (HashMap.Entry<String, int[]> entry : identifierReferenceMap.entrySet()) {
+      String k = entry.getKey();
+      int[] v = entry.getValue(); // count, post
+      if (v[0] == 0) {
+        // remove the entry
+        irList.remove(v[1] - normal);
+        // each time an element is removed, the array is shortened
+        // so we need to apply normal to fix the indices
+        normal += 1;
       }
-
+    }
   }
 }
