@@ -31,7 +31,7 @@ class Quadruple {
       strOp = instruction + "(" + operand1 + ")";
     } else if (instruction.equals("\"")) {
       // string assigment
-      strOp = result + " = " + operand2;
+      strOp = result + " = " + operand1;
     } else if (instruction.matches("L\\d+")
         || instruction.matches("C\\d+")
         || instruction.matches("LS\\d+")) {
@@ -53,7 +53,7 @@ class Quadruple {
 
 class IRGeneration {
 
-  public Vector<Quadruple> irList;
+  public ArrayList<Quadruple> irList;
   private HashMap<String, String> varTempMap;
   //             id       {idCount, idPos}
   public HashMap<String, int[]> identifierReferenceMap;
@@ -69,7 +69,7 @@ class IRGeneration {
   private int processedSwitchCase;
 
   public IRGeneration() {
-    irList = new Vector<>();
+    irList = new ArrayList<Quadruple>();
     varTempMap = new HashMap<String, String>();
     identifierReferenceMap = new HashMap<String, int[]>();
 
@@ -83,8 +83,8 @@ class IRGeneration {
     processedSwitchCase = 0;
     binaryExprRe =
         Pattern.compile(
-            "\\(?\\s*[\\w+ | \\d+ | \\s+]\\s*[\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ |"
-                + " \\s+]\\s*([\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ | \\s+])*\\s*\\)?",
+            "\\(?\\s*[\\w | \\d | \\s]+\\s*[\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w | \\d |"
+                + " \\s]+\\s*([\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w | \\d | \\s]+)*\\s*\\)?",
             Pattern.CASE_INSENSITIVE);
     unaryExprRe = Pattern.compile("\\d+|\\d+\\.\\d+|\\w+");
   }
@@ -149,6 +149,9 @@ class IRGeneration {
           // if assignment is a string:
           if (firstChar.equals("\"")) {
             op = "\"";
+            tempVar = generateTempVar(key);
+            q = new Quadruple(op, value, "", tempVar);
+            irList.add(q);
           }
           // if assignment is an binary expression
           else if (binaryExprRe.matcher(value).matches()) {
@@ -336,10 +339,9 @@ class IRGeneration {
       if (identifierReferenceMap.containsKey(id)) {
         // increment the reference
         idCountPos = new int[] {identifierReferenceMap.get(id)[0] + 1, count};
-        System.out.println(idCountPos);
         identifierReferenceMap.put(id, idCountPos);
-      } else if (id.matches("t\\d+")) {
-        // reference not in our map, but the id is still a valid temp var
+      } else if (id.matches("t\\d+") &&(!(q.operand1.matches("\\s*\\\"\\s*\\w+\\s*\\\"")))) {
+        // reference not in our map, but the id is still a valid temp var BUT shoudn't be a string
         idCountPos = new int[] {0, count};
         identifierReferenceMap.put(id, idCountPos);
       }

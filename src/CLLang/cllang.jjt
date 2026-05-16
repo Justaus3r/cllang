@@ -12,11 +12,13 @@ public class CLLang {
     public static SymbolTable symTb;
     public static SemanticAnalysis sa;
     public static IRGeneration irG;
+    public static AsmGeneration asmG;
 
     public static void main(String argv[]) throws ParseException {
         symTb = new SymbolTable();
         sa = new SemanticAnalysis();
         irG = new IRGeneration();
+        asmG = new AsmGeneration();
 
         CLLang parser = new CLLang(System.in);
         parser.Start();
@@ -36,12 +38,18 @@ public class CLLang {
         System.out.println("**********************************************");
         irG.postIROptimization();
         
-        System.out.println("\n\n********* Itermediate Representation(After Optimization) ********* ");
+        System.out.println("\n********* Itermediate Representation(After Optimization) ********* ");
             for(Quadruple q: irG.irList){
                 System.out.println(q.toString());
             }
         System.out.println("**********************************************");
-
+    
+        System.out.println("********* Target Code Generation (CISC based) ********* ");
+        asmG.generateAsm(irG.irList);
+        for(String inst: asmG.asmList){
+          System.out.println(inst);
+        }
+        System.out.println("*********************************************************");
 
     }
 

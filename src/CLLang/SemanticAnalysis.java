@@ -15,7 +15,7 @@ public class SemanticAnalysis {
         this.stringRe =  Pattern.compile("\"[\\w | \\s]+\"", Pattern.CASE_INSENSITIVE);
         // God help, what horrific , demon summoning i have written below
         // and yes. the following regex matches expressions with varying whitespaces, depth, parenthesis, etc
-        this.exprRe = Pattern.compile("\\(?\\s*[\\w+ | \\d+ | \\s+]\\s*[\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ | \\s+]\\s*([\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w+ | \\d+ | \\s+])*\\s*\\)?", Pattern.CASE_INSENSITIVE);
+        this.exprRe = Pattern.compile("\\(?\\s*[\\w | \\d | \\s]+\\s*[\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w | \\d | \\s]+\\s*([\\+ | \\- | \\* | \\/ | \\%]\\s*[\\w | \\d | \\s]+)*\\s*\\)?", Pattern.CASE_INSENSITIVE);
 
     }
 
