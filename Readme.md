@@ -1,9 +1,8 @@
 ## cllang
-cllang parser.
+cllang ParserGenerator , SemanticAnalyzer,  IRgenerator, AsmGenerator.
 
-## TODOS:
-- type check expressions in assignments stmts
-- more
+## Note:
+Plz anyone, don't use the horrendous abomination that i have written. I also hope that i am never allowed to write java again. Like seiously!
 
-
-
+## License
+Licensed under `Apache NON-AI License, Version 2.0`
